@@ -2,6 +2,9 @@ from configparser import ConfigParser
 
 from discord import User
 from discord.ext import commands
+from peewee import SqliteDatabase, IntegrityError
+
+from model import AuthorizedUser
 
 CONFIG_FILE = 'config.ini'
 
@@ -12,18 +15,68 @@ BOT_TOKEN = config.get('DEFAULT', 'BOT_TOKEN')
 
 bot = commands.Bot(command_prefix='$')
 
+db = SqliteDatabase('database.sqlite')
+
+db.bind([AuthorizedUser])
+db.create_tables([AuthorizedUser])
+
 @bot.event
 async def on_ready():
     print('Logged on as {0}!'.format(bot.user))
 
+async def is_authorized_or_owner(ctx):
+    is_owner = await bot.is_owner(ctx.author)
+    if is_owner:
+        return True
+    try:
+        AuthorizedUser.get(AuthorizedUser.id == ctx.author.id)
+        return True
+    except AuthorizedUser.DoesNotExist: # pylint: disable=no-member
+        return False
+    
+
 @bot.command()
-@commands.is_owner()
+@commands.check(is_authorized_or_owner)
 async def echo(ctx, arg):
     await ctx.send(arg)
 
 @bot.command()
+@commands.is_owner()
 async def add_user(ctx, *, user: User):
     print("Estão tentando adicionar o usuário com ID {} aos usuários autorizados".format(user.id))
-    await ctx.send("Adicionando usuário {}".format(user.name))
+    try:
+        AuthorizedUser.create(id=user.id)
+        await ctx.send("Adicionado usuário {}".format(user.name))
+    except IntegrityError:
+        await ctx.send("Usuário já autorizado")
+
+@bot.command()
+@commands.is_owner()
+async def remove_user(ctx, *, user: User):
+    print("Estão tentando remover o usuário com ID {} dos usuários autorizados".format(user.id))
+    query = AuthorizedUser.delete().where(AuthorizedUser.id == user.id)
+    rows_removed = query.execute()
+    if rows_removed > 0:
+        await ctx.send("Usuário {} desautorizado".format(user.name))
+    else:
+        await ctx.send("Usuário não estava autorizado: {}".format(user.name))
+
+@bot.command()
+@commands.is_owner()
+async def list_user(ctx):
+    print("Estão tentando listar os usuários autorizados")
+    authorized_users = AuthorizedUser.select()
+    if authorized_users.count() == 0: # pylint: disable=no-value-for-parameter
+        await ctx.send("Não há usuários autorizados")
+        return
+    output = "Estes são os usuários autorizados: "
+    for authorized_user in authorized_users:
+        discord_user = await bot.fetch_user(authorized_user.id)
+        output += "\n- {}".format(discord_user.name)
+    await ctx.send(output)
+
 
 bot.run(BOT_TOKEN)
+print('Disconnecting from DB...')
+db.close()
+print("DB disconnected!")

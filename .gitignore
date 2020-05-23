@@ -1,3 +1,5 @@
 
 config.ini
 .vscode
+database.sqlite
+__pycache__
