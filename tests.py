@@ -20,11 +20,27 @@ class FakeUser():
     name = 'foo'
 
 
+class FakeUser2():
+    id = 321
+    name = 'eggs'
+
+
+class FakeGuild():
+    id = 456
+    name = 'bar'
+
+
+class FakeGuild2():
+    id = 789
+    name = 'spam'
+
+
 class FakeContext():
     send_called = False
     send_parameters = None
-    def __init__(self):
-        self.author = FakeUser()
+    def __init__(self, author=None, guild=None):
+        self.author = FakeUser() if author is None else author
+        self.guild = FakeGuild() if guild is None else guild
 
     async def send(self, params):
         self.send_called = True
@@ -101,9 +117,11 @@ class TestAddUser(DBTestCase):
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Adicionado usuário foo")
 
-        authorized_user = AuthorizedUser.get(AuthorizedUser.id == user.id)
+        authorized_user = AuthorizedUser.get(
+            (AuthorizedUser.guild_id == ctx.guild.id) & (AuthorizedUser.user_id == user.id)
+        )
 
-        self.assertEqual(authorized_user.id, user.id)
+        self.assertEqual(authorized_user.user_id, user.id)
 
         ctx = FakeContext()
         asyncio.run(add_user(ctx, user=user))
@@ -111,13 +129,19 @@ class TestAddUser(DBTestCase):
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Usuário já autorizado")
 
+        ctx = FakeContext(guild=FakeGuild2())
+        asyncio.run(add_user(ctx, user=user))
+
+        self.assertTrue(ctx.send_called)
+        self.assertEqual(ctx.send_parameters, "Adicionado usuário foo")
+
 
 class TestRemoveUser(DBTestCase):
     def test_user_exists(self):
         user = FakeUser()
-        AuthorizedUser.create(id=user.id)
-
         ctx = FakeContext()
+        AuthorizedUser.create(guild_id=ctx.guild.id, user_id=user.id)
+
         asyncio.run(remove_user(ctx, user=user))
 
         self.assertTrue(ctx.send_called)
@@ -126,6 +150,16 @@ class TestRemoveUser(DBTestCase):
     def test_user_does_not_exist(self):
         user = FakeUser()
         ctx = FakeContext()
+        asyncio.run(remove_user(ctx, user=user))
+
+        self.assertTrue(ctx.send_called)
+        self.assertEqual(ctx.send_parameters, "Usuário não estava autorizado: {}".format(user.name))
+
+    def test_user_does_not_exist_in_this_guild(self):
+        user = FakeUser()
+        ctx = FakeContext()
+        guild2 = FakeGuild2()
+        AuthorizedUser.create(guild_id=guild2.id, user_id=user.id)
         asyncio.run(remove_user(ctx, user=user))
 
         self.assertTrue(ctx.send_called)
@@ -140,11 +174,21 @@ class TestListUser(DBTestCase):
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Não há usuários autorizados")
 
-    def test_has_results(self):
-        user = FakeUser()
-        AuthorizedUser.create(id=user.id)
 
+    def test_has_users_in_different_guild(self):
         ctx = FakeContext()
+        guild2 = FakeGuild2()
+        AuthorizedUser.create(guild_id=guild2.id, user_id=ctx.author.id)
+        asyncio.run(list_user(ctx, fetch_user=fake_fetch_user))
+
+        self.assertTrue(ctx.send_called)
+        self.assertEqual(ctx.send_parameters, "Não há usuários autorizados")
+
+    def test_has_results_in_same_guild(self):
+        user = FakeUser()
+        ctx = FakeContext()
+        AuthorizedUser.create(guild_id=ctx.guild.id, user_id=user.id)
+
         asyncio.run(list_user(ctx, fetch_user=fake_fetch_user))
 
         self.assertTrue(ctx.send_called)
@@ -160,13 +204,21 @@ class TestIsAuthorizedOrOwner(DBTestCase):
     
     def test_user_is_authorized(self):
         ctx = FakeContext()
-        AuthorizedUser.create(id=ctx.author.id)
+        AuthorizedUser.create(guild_id=ctx.guild.id, user_id=ctx.author.id)
         result = asyncio.run(is_authorized_or_owner(ctx, is_owner=returns_false))
         self.assertTrue(result)
 
 
     def test_user_is_not_authorized(self):
         ctx = FakeContext()
+        result = asyncio.run(is_authorized_or_owner(ctx, is_owner=returns_false))
+        self.assertFalse(result)
+
+
+    def test_user_is_not_authorized_but_authorized_in_another_guild(self):
+        ctx = FakeContext()
+        guild2 = FakeGuild2()
+        AuthorizedUser.create(guild_id=guild2.id, user_id=ctx.author.id)
         result = asyncio.run(is_authorized_or_owner(ctx, is_owner=returns_false))
         self.assertFalse(result)
 

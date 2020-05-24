@@ -1,4 +1,10 @@
 from peewee import SqliteDatabase, Model, IntegerField
 
 class AuthorizedUser(Model):
-    id = IntegerField(primary_key=True)
+    guild_id = IntegerField()
+    user_id = IntegerField()
+
+    class Meta:
+        indexes = (
+            (('guild_id', 'user_id'), True),
+        )

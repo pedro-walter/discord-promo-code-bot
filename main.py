@@ -30,7 +30,9 @@ async def is_authorized_or_owner(ctx, is_owner=bot.is_owner):
     if is_owner:
         return True
     try:
-        AuthorizedUser.get(AuthorizedUser.id == ctx.author.id)
+        AuthorizedUser.get(
+            (AuthorizedUser.user_id == ctx.author.id) & (AuthorizedUser.guild_id == ctx.guild.id)
+        )
         return True
     except AuthorizedUser.DoesNotExist: # pylint: disable=no-member
         return False
@@ -46,7 +48,7 @@ async def echo(ctx, arg):
 async def add_user(ctx, *, user: User):
     logging.info("Estão tentando adicionar o usuário com ID {} aos usuários autorizados".format(user.id))
     try:
-        AuthorizedUser.create(id=user.id)
+        AuthorizedUser.create(guild_id=ctx.guild.id, user_id=user.id)
         await ctx.send("Adicionado usuário {}".format(user.name))
     except IntegrityError:
         await ctx.send("Usuário já autorizado")
@@ -55,7 +57,9 @@ async def add_user(ctx, *, user: User):
 @commands.is_owner()
 async def remove_user(ctx, *, user: User):
     logging.info("Estão tentando remover o usuário com ID {} dos usuários autorizados".format(user.id))
-    query = AuthorizedUser.delete().where(AuthorizedUser.id == user.id)
+    query = AuthorizedUser.delete().where(
+        (AuthorizedUser.user_id == user.id) & (AuthorizedUser.guild_id == ctx.guild.id)
+    )
     rows_removed = query.execute()
     if rows_removed > 0:
         await ctx.send("Usuário {} desautorizado".format(user.name))
@@ -66,13 +70,13 @@ async def remove_user(ctx, *, user: User):
 @commands.is_owner()
 async def list_user(ctx, fetch_user=bot.fetch_user):
     logging.info("Estão tentando listar os usuários autorizados")
-    authorized_users = AuthorizedUser.select()
+    authorized_users = AuthorizedUser.select().where(AuthorizedUser.guild_id == ctx.guild.id)
     if authorized_users.count() == 0: # pylint: disable=no-value-for-parameter
         await ctx.send("Não há usuários autorizados")
         return
     output = "Estes são os usuários autorizados: "
     for authorized_user in authorized_users:
-        discord_user = await fetch_user(authorized_user.id)
+        discord_user = await fetch_user(authorized_user.user_id)
         output += "\n- {}".format(discord_user.name)
     await ctx.send(output)
 
