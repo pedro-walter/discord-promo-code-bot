@@ -1,10 +1,13 @@
 import asyncio
+import logging
 import unittest
 
 from peewee import SqliteDatabase
 
 from main import echo, add_user, remove_user, list_user, is_authorized_or_owner
 from model import AuthorizedUser
+
+logging.basicConfig(level=logging.ERROR)
 
 MODELS = [AuthorizedUser]
 

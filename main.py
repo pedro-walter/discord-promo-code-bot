@@ -1,4 +1,5 @@
 from configparser import ConfigParser
+import logging
 
 from discord import User
 from discord.ext import commands
@@ -22,7 +23,7 @@ db.create_tables([AuthorizedUser])
 
 @bot.event
 async def on_ready():
-    print('Logged on as {0}!'.format(bot.user))
+    logging.info('Logged on as {0}!'.format(bot.user))
 
 async def is_authorized_or_owner(ctx, is_owner=bot.is_owner):
     is_owner = await is_owner(ctx.author)
@@ -43,7 +44,7 @@ async def echo(ctx, arg):
 @bot.command()
 @commands.is_owner()
 async def add_user(ctx, *, user: User):
-    print("Estão tentando adicionar o usuário com ID {} aos usuários autorizados".format(user.id))
+    logging.info("Estão tentando adicionar o usuário com ID {} aos usuários autorizados".format(user.id))
     try:
         AuthorizedUser.create(id=user.id)
         await ctx.send("Adicionado usuário {}".format(user.name))
@@ -53,7 +54,7 @@ async def add_user(ctx, *, user: User):
 @bot.command()
 @commands.is_owner()
 async def remove_user(ctx, *, user: User):
-    print("Estão tentando remover o usuário com ID {} dos usuários autorizados".format(user.id))
+    logging.info("Estão tentando remover o usuário com ID {} dos usuários autorizados".format(user.id))
     query = AuthorizedUser.delete().where(AuthorizedUser.id == user.id)
     rows_removed = query.execute()
     if rows_removed > 0:
@@ -64,7 +65,7 @@ async def remove_user(ctx, *, user: User):
 @bot.command()
 @commands.is_owner()
 async def list_user(ctx, fetch_user=bot.fetch_user):
-    print("Estão tentando listar os usuários autorizados")
+    logging.info("Estão tentando listar os usuários autorizados")
     authorized_users = AuthorizedUser.select()
     if authorized_users.count() == 0: # pylint: disable=no-value-for-parameter
         await ctx.send("Não há usuários autorizados")
@@ -76,7 +77,8 @@ async def list_user(ctx, fetch_user=bot.fetch_user):
     await ctx.send(output)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     bot.run(BOT_TOKEN)
-    print('Disconnecting from DB...')
+    logging.info('Disconnecting from DB...')
     db.close()
-    print("DB disconnected!")
+    logging.info("DB disconnected!")
