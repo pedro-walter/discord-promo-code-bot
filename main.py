@@ -5,9 +5,8 @@ from discord import User
 from discord.ext import commands
 from peewee import SqliteDatabase, IntegrityError
 
+from constants import CONFIG_FILE, MODELS
 from model import AuthorizedUser
-
-CONFIG_FILE = 'config.ini'
 
 config = ConfigParser()
 config.read(CONFIG_FILE)
@@ -18,12 +17,12 @@ bot = commands.Bot(command_prefix='$')
 
 db = SqliteDatabase('database.sqlite')
 
-db.bind([AuthorizedUser])
-db.create_tables([AuthorizedUser])
+db.bind(MODELS)
+db.create_tables(MODELS)
 
 @bot.event
 async def on_ready():
-    logging.info('Logged on as {0}!'.format(bot.user))
+    logging.info('Logged on as %s!', bot.user)
 
 async def is_authorized_or_owner(ctx, is_owner=bot.is_owner):
     is_owner = await is_owner(ctx.author)
@@ -36,17 +35,21 @@ async def is_authorized_or_owner(ctx, is_owner=bot.is_owner):
         return True
     except AuthorizedUser.DoesNotExist: # pylint: disable=no-member
         return False
-    
+
 
 @bot.command()
 @commands.check(is_authorized_or_owner)
 async def echo(ctx, arg):
     await ctx.send(arg)
 
+
+#=======================================================
+#               USER COMMANDS
+#=======================================================
 @bot.command()
 @commands.is_owner()
 async def add_user(ctx, *, user: User):
-    logging.info("Estão tentando adicionar o usuário com ID {} aos usuários autorizados".format(user.id))
+    logging.info("Estão tentando adicionar o usuário com ID %s aos usuários autorizados", user.id)
     try:
         AuthorizedUser.create(guild_id=ctx.guild.id, user_id=user.id)
         await ctx.send("Adicionado usuário {}".format(user.name))
@@ -56,7 +59,7 @@ async def add_user(ctx, *, user: User):
 @bot.command()
 @commands.is_owner()
 async def remove_user(ctx, *, user: User):
-    logging.info("Estão tentando remover o usuário com ID {} dos usuários autorizados".format(user.id))
+    logging.info("Estão tentando remover o usuário com ID %s dos usuários autorizados", user.id)
     query = AuthorizedUser.delete().where(
         (AuthorizedUser.user_id == user.id) & (AuthorizedUser.guild_id == ctx.guild.id)
     )
@@ -79,6 +82,7 @@ async def list_user(ctx, fetch_user=bot.fetch_user):
         discord_user = await fetch_user(authorized_user.user_id)
         output += "\n- {}".format(discord_user.name)
     await ctx.send(output)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)

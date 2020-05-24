@@ -1,4 +1,4 @@
-from peewee import SqliteDatabase, Model, IntegerField
+from peewee import Model, IntegerField, CharField
 
 class AuthorizedUser(Model):
     guild_id = IntegerField()
@@ -7,4 +7,13 @@ class AuthorizedUser(Model):
     class Meta:
         indexes = (
             (('guild_id', 'user_id'), True),
+        )
+
+class PromoCodeGroup(Model):
+    guild_id = IntegerField()
+    name = CharField()
+
+    class Meta:
+        indexes = (
+            (('guild_id', 'name'), True),
         )
