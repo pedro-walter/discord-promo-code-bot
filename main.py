@@ -24,8 +24,8 @@ db.create_tables([AuthorizedUser])
 async def on_ready():
     print('Logged on as {0}!'.format(bot.user))
 
-async def is_authorized_or_owner(ctx):
-    is_owner = await bot.is_owner(ctx.author)
+async def is_authorized_or_owner(ctx, is_owner=bot.is_owner):
+    is_owner = await is_owner(ctx.author)
     if is_owner:
         return True
     try:
@@ -63,7 +63,7 @@ async def remove_user(ctx, *, user: User):
 
 @bot.command()
 @commands.is_owner()
-async def list_user(ctx):
+async def list_user(ctx, fetch_user=bot.fetch_user):
     print("Estão tentando listar os usuários autorizados")
     authorized_users = AuthorizedUser.select()
     if authorized_users.count() == 0: # pylint: disable=no-value-for-parameter
@@ -71,12 +71,12 @@ async def list_user(ctx):
         return
     output = "Estes são os usuários autorizados: "
     for authorized_user in authorized_users:
-        discord_user = await bot.fetch_user(authorized_user.id)
+        discord_user = await fetch_user(authorized_user.id)
         output += "\n- {}".format(discord_user.name)
     await ctx.send(output)
 
-
-bot.run(BOT_TOKEN)
-print('Disconnecting from DB...')
-db.close()
-print("DB disconnected!")
+if __name__ == '__main__':
+    bot.run(BOT_TOKEN)
+    print('Disconnecting from DB...')
+    db.close()
+    print("DB disconnected!")

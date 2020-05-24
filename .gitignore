@@ -3,3 +3,5 @@ config.ini
 .vscode
 database.sqlite
 __pycache__
+htmlcov
+.coverage
