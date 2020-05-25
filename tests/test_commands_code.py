@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime
 import logging
 
-from main import add_code, add_code_bulk, remove_code, list_code, send_code
+from main import add_code, add_code_bulk, remove_code, list_code, send_code, my_codes
 from model import PromoCodeGroup, PromoCode
 
 from .utils import DBTestCase, FakeContext, FakeGuild2, FakeUser
@@ -226,3 +226,31 @@ class TestSendCode(DBTestCase):
         self.assertEqual(saved_promo_code.sent_to_name, user.name)
         self.assertEqual(saved_promo_code.sent_to_id, user.id)
         self.assertIsNotNone(saved_promo_code.sent_at)
+
+class TestMyCodes(DBTestCase):
+    def test_user_has_no_codes(self):
+        ctx = FakeContext()
+        asyncio.run(my_codes(ctx))
+
+        self.assertTrue(ctx.author.send_called)
+        self.assertEqual(ctx.author.send_parameters, "Você não possui códigos")
+
+    def test_user_has_codes(self):
+        ctx = FakeContext()
+        author = ctx.author
+        sent_at = datetime.now()
+        group = PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
+        promo_code = PromoCode.create(
+            group=group,
+            code='ASDF-1234',
+            sent_to_id=author.id,
+            sent_to_name=author.name,
+            sent_at=sent_at
+        )
+        asyncio.run(my_codes(ctx))
+
+        self.assertTrue(ctx.author.send_called)
+        self.assertEqual(
+            ctx.author.send_parameters,
+            "Seus códigos: \n- {0} (recebido em {1})".format(promo_code.code, sent_at)
+        )

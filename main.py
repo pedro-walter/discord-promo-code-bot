@@ -237,6 +237,27 @@ async def send_code(ctx, group_name, user: User):
         await ctx.send("Código {} enviado para o usuário {}".format(promo_code.code, user.name))
         transaction.commit()
 
+
+@bot.command()
+@commands.check(is_authorized_or_owner)
+async def my_codes(ctx):
+    logging.info(
+        "O usuário %s (ID %s) está tentando listar os próprios códigos",
+        ctx.author.name, ctx.author.id
+    )
+    promo_codes = PromoCode.select().where(
+        (PromoCode.sent_to_id == ctx.author.id)
+    )
+    if promo_codes.count() == 0:
+        await ctx.author.send("Você não possui códigos")
+        return
+    output = "Seus códigos: "
+    for promo_code in promo_codes:
+        output += "\n- {0} (recebido em {1})".format(
+            promo_code.code, promo_code.sent_at
+        )
+    await ctx.author.send(output)
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     bot.run(BOT_TOKEN)
