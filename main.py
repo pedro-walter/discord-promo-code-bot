@@ -26,16 +26,12 @@ async def on_ready():
     logging.info('Logged on as %s!', bot.user)
 
 async def is_authorized_or_owner(ctx, is_owner=bot.is_owner):
-    is_owner = await is_owner(ctx.author)
-    if is_owner:
+    if await is_owner(ctx.author):
         return True
-    try:
-        AuthorizedUser.get(
-            (AuthorizedUser.user_id == ctx.author.id) & (AuthorizedUser.guild_id == ctx.guild.id)
-        )
-        return True
-    except AuthorizedUser.DoesNotExist: # pylint: disable=no-member
-        return False
+    user = AuthorizedUser.get_or_none(
+        (AuthorizedUser.user_id == ctx.author.id) & (AuthorizedUser.guild_id == ctx.guild.id)
+    )
+    return user is not None
 
 
 @bot.command()
@@ -94,6 +90,7 @@ async def add_group(ctx, group_name):
     if not validate_group_name(group_name):
         await ctx.send(
             "Nome de grupo inválido. Use apenas letras, números, traços (-) e underscore (_)")
+        return
     try:
         PromoCodeGroup.create(guild_id=ctx.guild.id, name=group_name)
         await ctx.send("Grupo {} criado".format(group_name))
@@ -144,6 +141,43 @@ async def add_code(ctx, group_name, code):
     except IntegrityError:
         await ctx.send("Código {0} já cadastrado no grupo {1}".format(code, group_name))
 
+@bot.command()
+@commands.check(is_authorized_or_owner)
+async def remove_code(ctx, group_name, code):
+    logging.info("Tentando remover o código %s do grupo %s", code, group_name)
+    group = PromoCodeGroup.get_or_none(
+        (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
+    )
+    if group is None:
+        await ctx.send("Código {0} não encontrado no grupo {1}".format(code, group_name))
+        return
+    query = PromoCode.delete().where(
+        (PromoCode.code == code) & (PromoCode.group == group)
+    )
+    rows_removed = query.execute()
+    if rows_removed > 0:
+        await ctx.send("Código {0} excluído do grupo {1}".format(code, group_name))
+    else:
+        await ctx.send("Código {0} não encontrado no grupo {1}".format(code, group_name))
+
+@bot.command()
+@commands.check(is_authorized_or_owner)
+async def list_code(ctx, group_name):
+    logging.info("Tentando list os códigos do grupo %s", group_name)
+    group = PromoCodeGroup.get_or_none(
+        (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
+    )
+    if group is None:
+        await ctx.send("Grupo {} não existe".format(group_name))
+        return
+    codes = PromoCode.select().where((PromoCode.group == group))
+    if codes.count() == 0: # pylint: disable=no-value-for-parameter
+        await ctx.send("Grupo {} não possui códigos".format(group_name))
+        return
+    output = "Códigos para o grupo {}: ".format(group_name)
+    for code in codes:
+        output += "\n- {}".format(code.code)
+    await ctx.send(output)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
