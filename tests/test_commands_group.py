@@ -35,6 +35,15 @@ class TestAddGroup(DBTestCase):
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Grupo foo criado")
 
+    def test_invalid_group_name(self):
+        ctx = FakeContext()
+        asyncio.run(add_group(ctx, group_name='asdf$'))
+
+        self.assertTrue(ctx.send_called)
+        self.assertEqual(
+            ctx.send_parameters, 
+            "Nome de grupo inválido. Use apenas letras, números, traços (-) e underscore (_)"
+        )
 
 class TestRemoveGroup(DBTestCase):
     def test_group_exists(self):

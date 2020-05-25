@@ -77,8 +77,16 @@ class TestAddCodeBulk(DBTestCase):
 
 
 class TestRemoveCode(DBTestCase):
+    def test_code_group_does_not_exist(self):
+        ctx = FakeContext()
+        asyncio.run(remove_code(ctx, group_name='foo', code='ASDF-1234'))
+
+        self.assertTrue(ctx.send_called)
+        self.assertEqual(ctx.send_parameters, "Código ASDF-1234 não encontrado no grupo foo")
+
     def test_code_does_not_exist(self):
         ctx = FakeContext()
+        PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
         asyncio.run(remove_code(ctx, group_name='foo', code='ASDF-1234'))
 
         self.assertTrue(ctx.send_called)
