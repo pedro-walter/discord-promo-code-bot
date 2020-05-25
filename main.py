@@ -7,7 +7,7 @@ from peewee import SqliteDatabase, IntegrityError
 
 from constants import CONFIG_FILE, MODELS
 from model import AuthorizedUser, PromoCodeGroup, PromoCode
-from utils import validate_group_name
+from utils import validate_group_name, parse_codes_in_bulk
 
 config = ConfigParser()
 config.read(CONFIG_FILE)
@@ -140,6 +140,23 @@ async def add_code(ctx, group_name, code):
         await ctx.send("Grupo de códigos promocionais não encontrado: {}".format(group_name))
     except IntegrityError:
         await ctx.send("Código {0} já cadastrado no grupo {1}".format(code, group_name))
+
+@bot.command()
+@commands.check(is_authorized_or_owner)
+async def add_code_bulk(ctx, group_name, *, code_bulk):
+    logging.info("Tentando adicionar códigos em massa ao grupo %s: %s", group_name, code_bulk)
+    group = PromoCodeGroup.get_or_none(
+        (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
+    )
+    if group is None:
+        await ctx.send("Grupo de códigos promocionais não encontrado: {}".format(group_name))
+        return
+    codes = parse_codes_in_bulk(code_bulk)
+    insert_bulk_data = [{'group': group, 'code': code} for code in codes]
+    with db.atomic() as transaction:
+        PromoCode.insert_many(insert_bulk_data).execute() # pylint: disable=no-value-for-parameter
+        transaction.commit()
+    await ctx.send("Códigos adicionados ao grupo {}".format(group_name))
 
 @bot.command()
 @commands.check(is_authorized_or_owner)

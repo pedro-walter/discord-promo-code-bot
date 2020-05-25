@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from main import add_code, remove_code, list_code
+from main import add_code, add_code_bulk, remove_code, list_code
 from model import PromoCodeGroup, PromoCode
 
 from .utils import DBTestCase, FakeContext, FakeGuild2
@@ -44,6 +44,37 @@ class TestAddCode(DBTestCase):
 
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Código ASDF-1234 já cadastrado no grupo foo")
+
+class TestAddCodeBulk(DBTestCase):
+    def test_group_does_not_exist(self):
+        ctx = FakeContext()
+        asyncio.run(add_code_bulk(ctx, group_name='foo', code_bulk='ASDF-1234 QWER-5678,ZXCV-9012'))
+
+        self.assertTrue(ctx.send_called)
+        self.assertEqual(ctx.send_parameters, "Grupo de códigos promocionais não encontrado: foo")
+
+    def test_group_exists_in_this_guild(self):
+        ctx = FakeContext()
+        PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
+        asyncio.run(add_code_bulk(ctx, group_name='foo', code_bulk='ASDF-1234 QWER-5678,ZXCV-9012'))
+
+        self.assertTrue(ctx.send_called)
+        self.assertEqual(ctx.send_parameters, "Códigos adicionados ao grupo foo")
+
+        promo_codes = PromoCode.select()
+        resulting_codes = ['ASDF-1234', 'QWER-5678', 'ZXCV-9012']
+        for (promo_code, resulting_code) in zip(promo_codes, resulting_codes):
+            self.assertEqual(promo_code.code, resulting_code)
+
+    def test_group_does_not_exist_in_this_guild(self):
+        ctx = FakeContext()
+        guild2 = FakeGuild2()
+        PromoCodeGroup.create(guild_id=guild2.id, name='foo')
+        asyncio.run(add_code_bulk(ctx, group_name='foo', code_bulk='ASDF-1234 QWER-5678,ZXCV-9012'))
+
+        self.assertTrue(ctx.send_called)
+        self.assertEqual(ctx.send_parameters, "Grupo de códigos promocionais não encontrado: foo")
+
 
 class TestRemoveCode(DBTestCase):
     def test_code_does_not_exist(self):
