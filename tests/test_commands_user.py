@@ -97,7 +97,3 @@ class TestListUser(DBTestCase):
             ctx.send_parameters,
             "Estes são os usuários autorizados: \n- {}".format(user.name)
         )
-
-
-if __name__ == '__main__':
-    unittest.main()
