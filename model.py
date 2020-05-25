@@ -1,4 +1,4 @@
-from peewee import Model, IntegerField, CharField
+from peewee import Model, IntegerField, CharField, ForeignKeyField
 
 class AuthorizedUser(Model):
     guild_id = IntegerField()
@@ -16,4 +16,13 @@ class PromoCodeGroup(Model):
     class Meta:
         indexes = (
             (('guild_id', 'name'), True),
+        )
+
+class PromoCode(Model):
+    group = ForeignKeyField(PromoCodeGroup, backref='codes')
+    code = CharField()
+
+    class Meta:
+        indexes = (
+            (('group_id', 'code'), True),
         )

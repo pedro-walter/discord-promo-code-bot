@@ -1,18 +1,16 @@
 import asyncio
 import logging
-import unittest
 
 from main import add_group, remove_group, list_group
-from model import AuthorizedUser, PromoCodeGroup
+from model import PromoCodeGroup
 
-from .utils import DBTestCase, FakeUser, FakeGuild2, FakeContext, fake_fetch_user
+from .utils import DBTestCase, FakeGuild2, FakeContext
 
 logging.basicConfig(level=logging.ERROR)
 
 class TestAddGroup(DBTestCase):
     def test_add_group(self):
         ctx = FakeContext()
-        user = FakeUser()
         asyncio.run(add_group(ctx, group_name='foo'))
 
         self.assertTrue(ctx.send_called)

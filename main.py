@@ -6,7 +6,7 @@ from discord.ext import commands
 from peewee import SqliteDatabase, IntegrityError
 
 from constants import CONFIG_FILE, MODELS
-from model import AuthorizedUser, PromoCodeGroup
+from model import AuthorizedUser, PromoCodeGroup, PromoCode
 from utils import validate_group_name
 
 config = ConfigParser()
@@ -125,6 +125,24 @@ async def list_group(ctx):
     for group in groups:
         output += "\n- {}".format(group.name)
     await ctx.send(output)
+
+#=======================================================
+#               PROMO CODE COMMANDS
+#=======================================================
+@bot.command()
+@commands.check(is_authorized_or_owner)
+async def add_code(ctx, group_name, code):
+    logging.info("Tentando adicionar o código %s ao grupo %s", code, group_name)
+    try:
+        group = PromoCodeGroup.get(
+            (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
+        )
+        PromoCode.create(group=group, code=code)
+        await ctx.send("Código {0} cadastrado no grupo {1} com sucesso!".format(code, group_name))
+    except PromoCodeGroup.DoesNotExist: # pylint: disable=no-member
+        await ctx.send("Grupo de códigos promocionais não encontrado: {}".format(group_name))
+    except IntegrityError:
+        await ctx.send("Código {0} já cadastrado no grupo {1}".format(code, group_name))
 
 
 if __name__ == '__main__':

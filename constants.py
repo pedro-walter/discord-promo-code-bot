@@ -1,4 +1,4 @@
-from model import AuthorizedUser, PromoCodeGroup
+from model import AuthorizedUser, PromoCodeGroup, PromoCode
 
 CONFIG_FILE = 'config.ini'
-MODELS = [AuthorizedUser, PromoCodeGroup]
+MODELS = [AuthorizedUser, PromoCodeGroup, PromoCode]
