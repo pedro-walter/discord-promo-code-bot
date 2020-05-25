@@ -4,12 +4,20 @@ from peewee import SqliteDatabase
 
 from constants import MODELS
 
-class FakeUser():
+class ReceivesMessages():
+    send_called = False
+    send_parameters = None
+
+    async def send(self, params):
+        self.send_called = True
+        self.send_parameters = params
+
+class FakeUser(ReceivesMessages):
     id = 123
     name = 'foo'
 
 
-class FakeUser2():
+class FakeUser2(ReceivesMessages):
     id = 321
     name = 'eggs'
 
@@ -24,16 +32,10 @@ class FakeGuild2():
     name = 'spam'
 
 
-class FakeContext():
-    send_called = False
-    send_parameters = None
+class FakeContext(ReceivesMessages):
     def __init__(self, author=None, guild=None):
         self.author = FakeUser() if author is None else author
         self.guild = FakeGuild() if guild is None else guild
-
-    async def send(self, params):
-        self.send_called = True
-        self.send_parameters = params
 
 
 async def fake_fetch_user(user_id): # pylint: disable=unused-argument

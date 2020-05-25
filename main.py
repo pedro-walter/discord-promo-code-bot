@@ -1,4 +1,5 @@
 from configparser import ConfigParser
+from datetime import datetime, timezone
 import logging
 
 from discord import User
@@ -38,6 +39,11 @@ async def is_authorized_or_owner(ctx, is_owner=bot.is_owner):
 @commands.check(is_authorized_or_owner)
 async def echo(ctx, arg):
     await ctx.send(arg)
+
+@bot.command()
+@commands.check(is_authorized_or_owner)
+async def echo_dm(ctx, arg):
+    await ctx.author.send(arg)
 
 
 #=======================================================
@@ -180,7 +186,7 @@ async def remove_code(ctx, group_name, code):
 @bot.command()
 @commands.check(is_authorized_or_owner)
 async def list_code(ctx, group_name):
-    logging.info("Tentando list os códigos do grupo %s", group_name)
+    logging.info("Tentando listar os códigos do grupo %s", group_name)
     group = PromoCodeGroup.get_or_none(
         (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
     )
@@ -194,7 +200,42 @@ async def list_code(ctx, group_name):
     output = "Códigos para o grupo {}: ".format(group_name)
     for code in codes:
         output += "\n- {}".format(code.code)
+        if code.sent_to_id:
+            output += " enviado para o usuário {0} em {1} (UTC)".format(
+                code.sent_to_name, code.sent_at
+            )
     await ctx.send(output)
+
+@bot.command()
+@commands.check(is_authorized_or_owner)
+async def send_code(ctx, group_name, user: User):
+    logging.info(
+        "Tentando enviar um código do grupo %s para o usuário %s (ID=%s)",
+        group_name, user.name, user.id
+    )
+    group = PromoCodeGroup.get_or_none(
+        (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
+    )
+    if group is None:
+        await ctx.send("Grupo {} não existe".format(group_name))
+        return
+    used_codes = PromoCode.select().where(
+        (PromoCode.group == group) & (PromoCode.sent_to_id == user.id)
+    )
+    if used_codes.count() > 0:
+        await ctx.send("Usuário {0} já resgatou código do grupo {1}".format(user.name, group_name))
+        return
+    with db.atomic() as transaction:
+        promo_code = PromoCode.select().where(
+            (PromoCode.group == group) & (PromoCode.sent_to_id == None) # pylint: disable=singleton-comparison
+        ).first()
+        promo_code.sent_to_name = user.name
+        promo_code.sent_to_id = user.id
+        promo_code.sent_at = datetime.now(timezone.utc)
+        promo_code.save()
+        await user.send("Olá! Você ganhou um código: {}".format(promo_code.code))
+        await ctx.send("Código {} enviado para o usuário {}".format(promo_code.code, user.name))
+        transaction.commit()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)

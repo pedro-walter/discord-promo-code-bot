@@ -1,4 +1,4 @@
-from peewee import Model, IntegerField, CharField, ForeignKeyField
+from peewee import Model, IntegerField, CharField, ForeignKeyField, DateTimeField
 
 class AuthorizedUser(Model):
     guild_id = IntegerField()
@@ -21,8 +21,12 @@ class PromoCodeGroup(Model):
 class PromoCode(Model):
     group = ForeignKeyField(PromoCodeGroup, backref='codes')
     code = CharField()
+    sent_to_name = CharField(null=True)
+    sent_to_id = IntegerField(null=True, index=True)
+    sent_at = DateTimeField(null=True)
 
     class Meta:
         indexes = (
             (('group_id', 'code'), True),
+            (('group_id', 'sent_to_id'), True),
         )

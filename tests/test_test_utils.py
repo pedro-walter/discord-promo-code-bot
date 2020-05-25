@@ -1,15 +1,15 @@
 import asyncio
 import unittest
 
-from .utils import FakeContext
+from .utils import ReceivesMessages
 
 class TestUtilityClasses(unittest.TestCase):
-    def test_fake_ctx(self):
-        ctx = FakeContext()
-        self.assertFalse(ctx.send_called)
-        self.assertIsNone(ctx.send_parameters)
+    def test_receives_messages_class(self):
+        receives_messages = ReceivesMessages()
+        self.assertFalse(receives_messages.send_called)
+        self.assertIsNone(receives_messages.send_parameters)
 
-        asyncio.run(ctx.send('foo'))
+        asyncio.run(receives_messages.send('foo'))
 
-        self.assertTrue(ctx.send_called)
-        self.assertEqual(ctx.send_parameters, 'foo')
+        self.assertTrue(receives_messages.send_called)
+        self.assertEqual(receives_messages.send_parameters, 'foo')
