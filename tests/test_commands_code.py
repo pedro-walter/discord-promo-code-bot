@@ -186,7 +186,7 @@ class TestSendCode(DBTestCase):
     def test_group_does_not_exist(self):
         ctx = FakeContext()
         user = FakeUser()
-        asyncio.run(send_code(ctx, group_name='foo', user=user))
+        asyncio.run(send_code(ctx, group_name='foo', users=[user]))
 
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Grupo foo não existe")
@@ -196,7 +196,7 @@ class TestSendCode(DBTestCase):
         user = FakeUser()
         guild2 = FakeGuild2()
         PromoCodeGroup.create(guild_id=guild2.id, name='foo')
-        asyncio.run(send_code(ctx, group_name='foo', user=user))
+        asyncio.run(send_code(ctx, group_name='foo', users=[user]))
 
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Grupo foo não existe")
@@ -206,7 +206,7 @@ class TestSendCode(DBTestCase):
         user = FakeUser()
         group = PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
         PromoCode.create(group=group, code='ASDF-1234', sent_to_id=user.id)
-        asyncio.run(send_code(ctx, group_name='foo', user=user))
+        asyncio.run(send_code(ctx, group_name='foo', users=[user]))
 
         self.assertTrue(ctx.send_called)
         self.assertEqual(
@@ -219,7 +219,7 @@ class TestSendCode(DBTestCase):
         user = FakeUser()
         group = PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
         promo_code = PromoCode.create(group=group, code='ASDF-1234')
-        asyncio.run(send_code(ctx, group_name='foo', user=user))
+        asyncio.run(send_code(ctx, group_name='foo', users=[user]))
 
         self.assertTrue(ctx.author.send_called)
         self.assertEqual(

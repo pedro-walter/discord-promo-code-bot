@@ -17,7 +17,7 @@ BOT_TOKEN = config.get('DEFAULT', 'BOT_TOKEN')
 
 bot = commands.Bot(command_prefix='$')
 
-db = SqliteDatabase('database.sqlite')
+db = SqliteDatabase('database.sqlite', pragmas={'foreign_keys': 1})
 
 db.bind(MODELS)
 db.create_tables(MODELS)
@@ -211,10 +211,10 @@ async def list_code(ctx, group_name):
 
 @bot.command()
 @commands.check(is_authorized_or_owner)
-async def send_code(ctx, group_name, user: User):
+async def send_code(ctx, group_name, users: commands.Greedy[User]):
     logging.info(
-        "Tentando enviar um código do grupo %s para o usuário %s (ID=%s)",
-        group_name, user.name, user.id
+        "Tentando enviar um código do grupo %s para o(s) usuário(s) %s",
+        group_name, ', '.join([f'{user.name}({user.id})' for user in users])
     )
     group = PromoCodeGroup.get_or_none(
         (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
@@ -222,26 +222,33 @@ async def send_code(ctx, group_name, user: User):
     if group is None:
         await ctx.send("Grupo {} não existe".format(group_name))
         return
-    used_codes = PromoCode.select().where(
-        (PromoCode.group == group) & (PromoCode.sent_to_id == user.id)
-    )
-    if used_codes.count() > 0:
-        await ctx.send("Usuário {0} já resgatou código do grupo {1}".format(user.name, group_name))
-        return
+    messages_author = []
+    messages_channel = []
     with db.atomic() as transaction:
-        promo_code = PromoCode.select().where(
-            (PromoCode.group == group) & (PromoCode.sent_to_id == None) # pylint: disable=singleton-comparison
-        ).first()
-        promo_code.sent_to_name = user.name
-        promo_code.sent_to_id = user.id
-        promo_code.sent_at = datetime.now(timezone.utc)
-        promo_code.save()
-        await user.send("Olá! Você ganhou um código: {}".format(promo_code.code))
-        # incluir essa linha nos testes!
-        await ctx.send("Enviado código do grupo {} para o usuário {}".format(group_name, user.name))
-        await ctx.author.send(
-            "Código {} enviado para o usuário {}".format(promo_code.code, user.name)
-        )
+        for user in users:
+            used_codes = PromoCode.select().where(
+                (PromoCode.group == group) & (PromoCode.sent_to_id == user.id)
+            )
+            if used_codes.count() > 0:
+                messages_channel.append("Usuário {0} já resgatou código do grupo {1}".format(user.name, group_name))
+                continue
+            promo_code = PromoCode.select().where(
+                (PromoCode.group == group) & (PromoCode.sent_to_id == None) # pylint: disable=singleton-comparison
+            ).first()
+            promo_code.sent_to_name = user.name
+            promo_code.sent_to_id = user.id
+            promo_code.sent_at = datetime.now(timezone.utc)
+            promo_code.save()
+            await user.send("Olá! Você ganhou um código: {}".format(promo_code.code))
+            # incluir essa linha nos testes!
+            messages_author.append(
+                "Código {} enviado para o usuário {}".format(promo_code.code, user.name)
+            )
+            messages_channel.append(
+                "Enviado código do grupo {} para o usuário {}".format(group_name, user.name)
+            )
+        await ctx.send("\n".join(messages_channel))
+        await ctx.author.send("\n".join(messages_author))
         transaction.commit()
 
 

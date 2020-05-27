@@ -19,7 +19,7 @@ class PromoCodeGroup(Model):
         )
 
 class PromoCode(Model):
-    group = ForeignKeyField(PromoCodeGroup, backref='codes')
+    group = ForeignKeyField(PromoCodeGroup, backref='codes', on_delete='CASCADE')
     code = CharField()
     sent_to_name = CharField(null=True)
     sent_to_id = IntegerField(null=True, index=True)

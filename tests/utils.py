@@ -53,7 +53,7 @@ async def returns_false(*args): # pylint: disable=unused-argument
 class DBTestCase(unittest.TestCase):
     def setUp(self):
         # use an in-memory SQLite for tests.
-        self.test_db = SqliteDatabase(':memory:')
+        self.test_db = SqliteDatabase(':memory:', pragmas={'foreign_keys': 1})
 
         # Bind model classes to test db. Since we have a complete list of
         # all models, we do not need to recursively bind dependencies.

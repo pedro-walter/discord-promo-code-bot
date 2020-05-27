@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from main import add_group, remove_group, list_group
-from model import PromoCodeGroup
+from model import PromoCodeGroup, PromoCode
 
 from .utils import DBTestCase, FakeGuild2, FakeContext
 
@@ -70,6 +70,16 @@ class TestRemoveGroup(DBTestCase):
 
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Grupo foo não existe!")
+
+    def test_delete_group_removes_its_keys(self):
+        ctx = FakeContext()
+        group = PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
+        PromoCode.create(group=group, code='ASDF-1234')
+        asyncio.run(remove_group(ctx, group_name='foo'))
+
+        self.assertTrue(ctx.send_called)
+        self.assertEqual(ctx.send_parameters, "Grupo foo removido")
+        self.assertEqual(PromoCode.select().count(), 0)            
 
 
 class TestListUser(DBTestCase):
