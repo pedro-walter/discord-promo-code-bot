@@ -4,6 +4,7 @@ import logging
 
 from main import add_code, add_code_bulk, remove_code, list_code, send_code, my_codes
 from model import PromoCodeGroup, PromoCode
+from constants import DATETIME_FORMAT, LOCAL_TIMEZONE
 
 from .utils import DBTestCase, FakeContext, FakeGuild2, FakeUser
 
@@ -36,6 +37,17 @@ class TestAddCode(DBTestCase):
 
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Grupo de códigos promocionais não encontrado: foo")
+
+    def test_invalid_code(self):
+        ctx = FakeContext()
+        PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
+        asyncio.run(add_code(ctx, group_name='foo', code='ASDF$1234'))
+
+        self.assertTrue(ctx.send_called)
+        self.assertEqual(
+            ctx.send_parameters,
+            "Código inválido: o código deve ser apenas letras, números e traços (-)"
+        )
 
     def test_code_already_registered(self):
         ctx = FakeContext()
@@ -143,8 +155,8 @@ class TestListCode(DBTestCase):
         PromoCode.create(group=group, code='ASDF-1234')
         asyncio.run(list_code(ctx, group_name='foo'))
 
-        self.assertTrue(ctx.send_called)
-        self.assertEqual(ctx.send_parameters, "Códigos para o grupo foo: \n- ASDF-1234")
+        self.assertTrue(ctx.author.send_called)
+        self.assertEqual(ctx.author.send_parameters, "Códigos para o grupo foo: \n- ASDF-1234")
 
     def test_group_has_sent_codes(self):
         ctx = FakeContext()
@@ -160,13 +172,13 @@ class TestListCode(DBTestCase):
         )
         asyncio.run(list_code(ctx, group_name='foo'))
 
-        self.assertTrue(ctx.send_called)
+        self.assertTrue(ctx.author.send_called)
         self.assertEqual(
-            ctx.send_parameters,
+            ctx.author.send_parameters,
             "Códigos para o grupo foo: \n- {0} enviado para o usuário {1} em {2} (UTC)".format(
                 promo_code.code,
                 user.name,
-                sent_at
+                sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
             )
         )
 
@@ -209,9 +221,9 @@ class TestSendCode(DBTestCase):
         promo_code = PromoCode.create(group=group, code='ASDF-1234')
         asyncio.run(send_code(ctx, group_name='foo', user=user))
 
-        self.assertTrue(ctx.send_called)
+        self.assertTrue(ctx.author.send_called)
         self.assertEqual(
-            ctx.send_parameters,
+            ctx.author.send_parameters,
             "Código {} enviado para o usuário {}".format(promo_code.code, user.name)
         )
 
@@ -252,5 +264,8 @@ class TestMyCodes(DBTestCase):
         self.assertTrue(ctx.author.send_called)
         self.assertEqual(
             ctx.author.send_parameters,
-            "Seus códigos: \n- {0} (recebido em {1})".format(promo_code.code, sent_at)
+            "Seus códigos: \n- {0} (recebido em {1})".format(
+                promo_code.code,
+                sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
+            )
         )

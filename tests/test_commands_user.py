@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import unittest
 
 from main import add_user, remove_user, list_user
 from model import AuthorizedUser

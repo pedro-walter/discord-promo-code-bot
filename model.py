@@ -28,5 +28,4 @@ class PromoCode(Model):
     class Meta:
         indexes = (
             (('group_id', 'code'), True),
-            (('group_id', 'sent_to_id'), True),
         )

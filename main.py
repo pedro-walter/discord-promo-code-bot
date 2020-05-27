@@ -6,9 +6,9 @@ from discord import User
 from discord.ext import commands
 from peewee import SqliteDatabase, IntegrityError
 
-from constants import CONFIG_FILE, MODELS
+from constants import CONFIG_FILE, MODELS, DATETIME_FORMAT, LOCAL_TIMEZONE
 from model import AuthorizedUser, PromoCodeGroup, PromoCode
-from utils import validate_group_name, parse_codes_in_bulk
+from utils import validate_group_name, parse_codes_in_bulk, validate_code
 
 config = ConfigParser()
 config.read(CONFIG_FILE)
@@ -122,7 +122,7 @@ async def list_group(ctx):
     logging.info("Tentando listar grupos")
     groups = PromoCodeGroup.select().where(PromoCodeGroup.guild_id == ctx.guild.id)
     if groups.count() == 0: # pylint: disable=no-value-for-parameter
-        await  ctx.send("Não há grupos de código promocional cadastrados")
+        await ctx.send("Não há grupos de código promocional cadastrados")
         return
     output = "Estes são os grupos de código promocional existentes: "
     for group in groups:
@@ -136,6 +136,9 @@ async def list_group(ctx):
 @commands.check(is_authorized_or_owner)
 async def add_code(ctx, group_name, code):
     logging.info("Tentando adicionar o código %s ao grupo %s", code, group_name)
+    if not validate_code(code):
+        await ctx.send("Código inválido: o código deve ser apenas letras, números e traços (-)")
+        return
     try:
         group = PromoCodeGroup.get(
             (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
@@ -202,9 +205,9 @@ async def list_code(ctx, group_name):
         output += "\n- {}".format(code.code)
         if code.sent_to_id:
             output += " enviado para o usuário {0} em {1} (UTC)".format(
-                code.sent_to_name, code.sent_at
+                code.sent_to_name, code.sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
             )
-    await ctx.send(output)
+    await ctx.author.send(output)
 
 @bot.command()
 @commands.check(is_authorized_or_owner)
@@ -234,12 +237,15 @@ async def send_code(ctx, group_name, user: User):
         promo_code.sent_at = datetime.now(timezone.utc)
         promo_code.save()
         await user.send("Olá! Você ganhou um código: {}".format(promo_code.code))
-        await ctx.send("Código {} enviado para o usuário {}".format(promo_code.code, user.name))
+        # incluir essa linha nos testes!
+        await ctx.send("Enviado código do grupo {} para o usuário {}".format(group_name, user.name))
+        await ctx.author.send(
+            "Código {} enviado para o usuário {}".format(promo_code.code, user.name)
+        )
         transaction.commit()
 
 
 @bot.command()
-@commands.check(is_authorized_or_owner)
 async def my_codes(ctx):
     logging.info(
         "O usuário %s (ID %s) está tentando listar os próprios códigos",
@@ -254,7 +260,7 @@ async def my_codes(ctx):
     output = "Seus códigos: "
     for promo_code in promo_codes:
         output += "\n- {0} (recebido em {1})".format(
-            promo_code.code, promo_code.sent_at
+            promo_code.code, promo_code.sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
         )
     await ctx.author.send(output)
 

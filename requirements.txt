@@ -13,6 +13,7 @@ mccabe==0.6.1
 multidict==4.7.6
 peewee==3.13.3
 pylint==2.5.2
+pytz==2020.1
 six==1.15.0
 toml==0.10.1
 typed-ast==1.4.1
