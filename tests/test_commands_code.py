@@ -175,7 +175,7 @@ class TestListCode(DBTestCase):
         self.assertTrue(ctx.author.send_called)
         self.assertEqual(
             ctx.author.send_parameters,
-            "Códigos para o grupo foo: \n- {0} enviado para o usuário {1} em {2} (UTC)".format(
+            "Códigos para o grupo foo: \n- {0} enviado para o usuário {1} em {2}".format(
                 promo_code.code,
                 user.name,
                 sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)

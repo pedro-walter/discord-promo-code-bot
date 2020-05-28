@@ -8,7 +8,7 @@ from peewee import SqliteDatabase, IntegrityError
 
 from constants import CONFIG_FILE, MODELS, DATETIME_FORMAT, LOCAL_TIMEZONE
 from model import AuthorizedUser, PromoCodeGroup, PromoCode
-from utils import validate_group_name, parse_codes_in_bulk, validate_code
+from utils import validate_group_name, parse_codes_in_bulk, validate_code, sqlite_datetime_hack
 
 config = ConfigParser()
 config.read(CONFIG_FILE)
@@ -52,6 +52,7 @@ async def echo_dm(ctx, arg):
 @bot.command()
 @commands.is_owner()
 async def add_user(ctx, *, user: User):
+    """Adds a user to the authorized user list."""
     logging.info("Estão tentando adicionar o usuário com ID %s aos usuários autorizados", user.id)
     try:
         AuthorizedUser.create(guild_id=ctx.guild.id, user_id=user.id)
@@ -62,6 +63,7 @@ async def add_user(ctx, *, user: User):
 @bot.command()
 @commands.is_owner()
 async def remove_user(ctx, *, user: User):
+    """Removes a user from the authorized user list."""
     logging.info("Estão tentando remover o usuário com ID %s dos usuários autorizados", user.id)
     query = AuthorizedUser.delete().where(
         (AuthorizedUser.user_id == user.id) & (AuthorizedUser.guild_id == ctx.guild.id)
@@ -75,6 +77,7 @@ async def remove_user(ctx, *, user: User):
 @bot.command()
 @commands.is_owner()
 async def list_user(ctx, fetch_user=bot.fetch_user):
+    """Lists the authorized users."""
     logging.info("Estão tentando listar os usuários autorizados")
     authorized_users = AuthorizedUser.select().where(AuthorizedUser.guild_id == ctx.guild.id)
     if authorized_users.count() == 0: # pylint: disable=no-value-for-parameter
@@ -92,6 +95,7 @@ async def list_user(ctx, fetch_user=bot.fetch_user):
 @bot.command()
 @commands.check(is_authorized_or_owner)
 async def add_group(ctx, group_name):
+    """Creates a group of promo codes. No code can live outside of a group (they get lonely!)."""
     logging.info("Tentando adicionar grupo '%s'", group_name)
     if not validate_group_name(group_name):
         await ctx.send(
@@ -106,6 +110,7 @@ async def add_group(ctx, group_name):
 @bot.command()
 @commands.check(is_authorized_or_owner)
 async def remove_group(ctx, group_name):
+    """Destroys a promo code group. Careful! All codes within it are brutally killed too!"""
     logging.info("Tentando remover grupo '%s'", group_name)
     query = PromoCodeGroup.delete().where(
         (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
@@ -119,6 +124,7 @@ async def remove_group(ctx, group_name):
 @bot.command()
 @commands.check(is_authorized_or_owner)
 async def list_group(ctx):
+    """Let's you see the promo code groups."""
     logging.info("Tentando listar grupos")
     groups = PromoCodeGroup.select().where(PromoCodeGroup.guild_id == ctx.guild.id)
     if groups.count() == 0: # pylint: disable=no-value-for-parameter
@@ -135,6 +141,7 @@ async def list_group(ctx):
 @bot.command()
 @commands.check(is_authorized_or_owner)
 async def add_code(ctx, group_name, code):
+    """Add a code to a promo group."""
     logging.info("Tentando adicionar o código %s ao grupo %s", code, group_name)
     if not validate_code(code):
         await ctx.send("Código inválido: o código deve ser apenas letras, números e traços (-)")
@@ -153,6 +160,9 @@ async def add_code(ctx, group_name, code):
 @bot.command()
 @commands.check(is_authorized_or_owner)
 async def add_code_bulk(ctx, group_name, *, code_bulk):
+    """Adds a lot of codes to the same group. 
+    
+    Codes are separated by anything that is not a letter, number or dash (-)."""
     logging.info("Tentando adicionar códigos em massa ao grupo %s: %s", group_name, code_bulk)
     group = PromoCodeGroup.get_or_none(
         (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
@@ -170,6 +180,7 @@ async def add_code_bulk(ctx, group_name, *, code_bulk):
 @bot.command()
 @commands.check(is_authorized_or_owner)
 async def remove_code(ctx, group_name, code):
+    """Removes a code from a code group."""
     logging.info("Tentando remover o código %s do grupo %s", code, group_name)
     group = PromoCodeGroup.get_or_none(
         (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
@@ -189,6 +200,7 @@ async def remove_code(ctx, group_name, code):
 @bot.command()
 @commands.check(is_authorized_or_owner)
 async def list_code(ctx, group_name):
+    """Lists all codes inside a code group."""
     logging.info("Tentando listar os códigos do grupo %s", group_name)
     group = PromoCodeGroup.get_or_none(
         (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == group_name)
@@ -203,15 +215,17 @@ async def list_code(ctx, group_name):
     output = "Códigos para o grupo {}: ".format(group_name)
     for code in codes:
         output += "\n- {}".format(code.code)
+        sent_at = sqlite_datetime_hack(code.sent_at)
         if code.sent_to_id:
-            output += " enviado para o usuário {0} em {1} (UTC)".format(
-                code.sent_to_name, code.sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
+            output += " enviado para o usuário {0} em {1}".format(
+                code.sent_to_name, sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
             )
     await ctx.author.send(output)
 
 @bot.command()
 @commands.check(is_authorized_or_owner)
 async def send_code(ctx, group_name, users: commands.Greedy[User]):
+    """Sends a promo code from a code group to each of the mentioned users."""
     logging.info(
         "Tentando enviar um código do grupo %s para o(s) usuário(s) %s",
         group_name, ', '.join([f'{user.name}({user.id})' for user in users])
@@ -254,6 +268,7 @@ async def send_code(ctx, group_name, users: commands.Greedy[User]):
 
 @bot.command()
 async def my_codes(ctx):
+    """List the codes you received from me!"""
     logging.info(
         "O usuário %s (ID %s) está tentando listar os próprios códigos",
         ctx.author.name, ctx.author.id
@@ -266,8 +281,9 @@ async def my_codes(ctx):
         return
     output = "Seus códigos: "
     for promo_code in promo_codes:
+        sent_at = sqlite_datetime_hack(promo_code.sent_at)
         output += "\n- {0} (recebido em {1})".format(
-            promo_code.code, promo_code.sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
+            promo_code.code, sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
         )
     await ctx.author.send(output)
 

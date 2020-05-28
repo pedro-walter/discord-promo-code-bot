@@ -1,3 +1,4 @@
+from datetime import datetime
 import re
 
 def validate_group_name(group_name):
@@ -8,3 +9,8 @@ def validate_code(code):
 
 def parse_codes_in_bulk(code_bulk):
     return re.split('[^\w-]+', code_bulk)
+
+def sqlite_datetime_hack(datetime_or_str):
+    if datetime_or_str.__class__ == str:
+        return datetime.fromisoformat(datetime_or_str)
+    return datetime_or_str
