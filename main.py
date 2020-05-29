@@ -224,7 +224,7 @@ async def list_code(ctx, group_name):
 
 @bot.command()
 @commands.check(is_authorized_or_owner)
-async def send_code(ctx, group_name, users: commands.Greedy[User]):
+async def send_code(ctx, group_name, users: commands.Greedy[User], is_authorized_or_owner=is_authorized_or_owner):
     """Sends a promo code from a code group to each of the mentioned users."""
     logging.info(
         "Tentando enviar um código do grupo %s para o(s) usuário(s) %s",
@@ -240,12 +240,13 @@ async def send_code(ctx, group_name, users: commands.Greedy[User]):
     messages_channel = []
     with db.atomic() as transaction:
         for user in users:
-            used_codes = PromoCode.select().where(
-                (PromoCode.group == group) & (PromoCode.sent_to_id == user.id)
-            )
-            if used_codes.count() > 0:
-                messages_channel.append("Usuário {0} já resgatou código do grupo {1}".format(user.name, group_name))
-                continue
+            if not await is_authorized_or_owner(ctx):
+                used_codes = PromoCode.select().where(
+                    (PromoCode.group == group) & (PromoCode.sent_to_id == user.id)
+                )
+                if used_codes.count() > 0:
+                    messages_channel.append("Usuário {0} já resgatou código do grupo {1}".format(user.name, group_name))
+                    continue
             promo_code = PromoCode.select().where(
                 (PromoCode.group == group) & (PromoCode.sent_to_id == None) # pylint: disable=singleton-comparison
             ).first()

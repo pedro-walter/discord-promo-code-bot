@@ -6,7 +6,7 @@ from main import add_code, add_code_bulk, remove_code, list_code, send_code, my_
 from model import PromoCodeGroup, PromoCode
 from constants import DATETIME_FORMAT, LOCAL_TIMEZONE
 
-from .utils import DBTestCase, FakeContext, FakeGuild2, FakeUser
+from .utils import DBTestCase, FakeContext, FakeGuild2, FakeUser, returns_false, returns_true
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -206,7 +206,7 @@ class TestSendCode(DBTestCase):
         user = FakeUser()
         group = PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
         PromoCode.create(group=group, code='ASDF-1234', sent_to_id=user.id)
-        asyncio.run(send_code(ctx, group_name='foo', users=[user]))
+        asyncio.run(send_code(ctx, group_name='foo', users=[user], is_authorized_or_owner=returns_false))
 
         self.assertTrue(ctx.send_called)
         self.assertEqual(
@@ -214,12 +214,32 @@ class TestSendCode(DBTestCase):
             "Usuário {0} já resgatou código do grupo {1}".format(user.name, 'foo')
         )
 
+    def test_group_has_code_and_authorized_user_has_already_received_one(self):
+        ctx = FakeContext()
+        user = FakeUser()
+        group = PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
+        PromoCode.create(group=group, code='ASDF-1234', sent_to_id=user.id)
+        promo_code = PromoCode.create(group=group, code='QWER-5678')
+        asyncio.run(send_code(ctx, group_name='foo', users=[user], is_authorized_or_owner=returns_true))
+
+        self.assertTrue(ctx.author.send_called)
+        self.assertEqual(
+            ctx.author.send_parameters,
+            "Código {} enviado para o usuário {}".format(promo_code.code, user.name)
+        )
+
+        self.assertTrue(user.send_called)
+        self.assertEqual(
+            user.send_parameters,
+            "Olá! Você ganhou um código: {}".format(promo_code.code)
+        )
+
     def test_group_has_code_and_user_has_not_yet_received_one(self):
         ctx = FakeContext()
         user = FakeUser()
         group = PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
         promo_code = PromoCode.create(group=group, code='ASDF-1234')
-        asyncio.run(send_code(ctx, group_name='foo', users=[user]))
+        asyncio.run(send_code(ctx, group_name='foo', users=[user], is_authorized_or_owner=returns_false))
 
         self.assertTrue(ctx.author.send_called)
         self.assertEqual(
