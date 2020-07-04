@@ -214,13 +214,13 @@ async def list_code(ctx, group_name):
         return
     output = "Códigos para o grupo {}: ".format(group_name)
     for code in codes:
-        output += "\n- {}".format(code.code)
+        output += "|\n- {}".format(code.code)
         sent_at = sqlite_datetime_hack(code.sent_at)
         if code.sent_to_id:
             output += " enviado para o usuário {0} em {1}".format(
                 code.sent_to_name, sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
             )
-    await send_long_message_array(ctx.author.send, output)
+    await send_long_message_array(ctx.author.send, output, split_character='|')
 
 @bot.command()
 @commands.check(is_authorized_or_owner)
