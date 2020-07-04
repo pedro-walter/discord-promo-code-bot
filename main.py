@@ -8,7 +8,7 @@ from peewee import SqliteDatabase, IntegrityError
 
 from constants import CONFIG_FILE, MODELS, DATETIME_FORMAT, LOCAL_TIMEZONE
 from model import AuthorizedUser, PromoCodeGroup, PromoCode
-from utils import validate_group_name, parse_codes_in_bulk, validate_code, sqlite_datetime_hack
+from utils import validate_group_name, parse_codes_in_bulk, validate_code, sqlite_datetime_hack, send_long_message_array
 
 config = ConfigParser()
 config.read(CONFIG_FILE)
@@ -220,7 +220,7 @@ async def list_code(ctx, group_name):
             output += " enviado para o usuário {0} em {1}".format(
                 code.sent_to_name, sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
             )
-    await ctx.author.send(output)
+    await send_long_message_array(ctx.author.send, output)
 
 @bot.command()
 @commands.check(is_authorized_or_owner)
