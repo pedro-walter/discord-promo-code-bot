@@ -1,19 +1,20 @@
 from configparser import ConfigParser
 from datetime import datetime, timezone
 import logging
+import os
 
 from discord import User
 from discord.ext import commands
+from dotenv import load_dotenv
 from peewee import SqliteDatabase, IntegrityError
 
-from constants import CONFIG_FILE, MODELS, DATETIME_FORMAT, LOCAL_TIMEZONE
+from constants import MODELS, DATETIME_FORMAT, LOCAL_TIMEZONE
 from model import AuthorizedUser, PromoCodeGroup, PromoCode
 from utils import validate_group_name, parse_codes_in_bulk, validate_code, sqlite_datetime_hack, send_long_message_array
 
-config = ConfigParser()
-config.read(CONFIG_FILE)
+load_dotenv()
 
-BOT_TOKEN = config.get('DEFAULT', 'BOT_TOKEN')
+BOT_TOKEN = os.getenv('BOT_TOKEN')
 
 bot = commands.Bot(command_prefix='$')
 
