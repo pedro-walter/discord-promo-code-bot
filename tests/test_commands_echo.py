@@ -4,6 +4,7 @@ import unittest
 from .utils import FakeContext
 from main import echo
 
+
 class TestEcho(unittest.TestCase):
     def test_echo(self):
         ctx = FakeContext()

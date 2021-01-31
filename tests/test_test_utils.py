@@ -3,6 +3,7 @@ import unittest
 
 from .utils import ReceivesMessages
 
+
 class TestUtilityClasses(unittest.TestCase):
     def test_receives_messages_class(self):
         receives_messages = ReceivesMessages()

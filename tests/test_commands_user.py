@@ -4,9 +4,14 @@ import logging
 from main import add_user, remove_user, list_user
 from model import AuthorizedUser
 
-from .utils import DBTestCase, FakeUser, FakeGuild2, FakeContext, fake_fetch_user
+from .utils import (DBTestCase,
+                    FakeUser,
+                    FakeGuild2,
+                    FakeContext,
+                    fake_fetch_user)
 
 logging.basicConfig(level=logging.ERROR)
+
 
 class TestAddUser(DBTestCase):
     def test_add_user(self):
@@ -18,7 +23,9 @@ class TestAddUser(DBTestCase):
         self.assertEqual(ctx.send_parameters, "Adicionado usuário foo")
 
         authorized_user = AuthorizedUser.get(
-            (AuthorizedUser.guild_id == ctx.guild.id) & (AuthorizedUser.user_id == user.id)
+            (AuthorizedUser.guild_id == ctx.guild.id)
+            &
+            (AuthorizedUser.user_id == user.id)
         )
 
         self.assertEqual(authorized_user.user_id, user.id)
@@ -45,7 +52,8 @@ class TestRemoveUser(DBTestCase):
         asyncio.run(remove_user(ctx, user=user))
 
         self.assertTrue(ctx.send_called)
-        self.assertEqual(ctx.send_parameters, "Usuário {} desautorizado".format(user.name))
+        self.assertEqual(ctx.send_parameters,
+                         "Usuário {} desautorizado".format(user.name))
 
     def test_user_does_not_exist(self):
         user = FakeUser()
@@ -53,7 +61,8 @@ class TestRemoveUser(DBTestCase):
         asyncio.run(remove_user(ctx, user=user))
 
         self.assertTrue(ctx.send_called)
-        self.assertEqual(ctx.send_parameters, "Usuário não estava autorizado: {}".format(user.name))
+        self.assertEqual(ctx.send_parameters,
+                         "Usuário não estava autorizado: {}".format(user.name))
 
     def test_user_does_not_exist_in_this_guild(self):
         user = FakeUser()
@@ -63,7 +72,8 @@ class TestRemoveUser(DBTestCase):
         asyncio.run(remove_user(ctx, user=user))
 
         self.assertTrue(ctx.send_called)
-        self.assertEqual(ctx.send_parameters, "Usuário não estava autorizado: {}".format(user.name))
+        self.assertEqual(ctx.send_parameters,
+                         "Usuário não estava autorizado: {}".format(user.name))
 
 
 class TestListUser(DBTestCase):
@@ -73,7 +83,6 @@ class TestListUser(DBTestCase):
 
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Não há usuários autorizados")
-
 
     def test_has_users_in_different_guild(self):
         ctx = FakeContext()

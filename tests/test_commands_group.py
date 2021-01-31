@@ -8,6 +8,7 @@ from .utils import DBTestCase, FakeGuild2, FakeContext
 
 logging.basicConfig(level=logging.ERROR)
 
+
 class TestAddGroup(DBTestCase):
     def test_add_group(self):
         ctx = FakeContext()
@@ -17,7 +18,9 @@ class TestAddGroup(DBTestCase):
         self.assertEqual(ctx.send_parameters, "Grupo foo criado")
 
         group = PromoCodeGroup.get(
-            (PromoCodeGroup.guild_id == ctx.guild.id) & (PromoCodeGroup.name == 'foo')
+            (PromoCodeGroup.guild_id == ctx.guild.id)
+            &
+            (PromoCodeGroup.name == 'foo')
         )
 
         self.assertEqual(group.guild_id, ctx.guild.id)
@@ -41,9 +44,10 @@ class TestAddGroup(DBTestCase):
 
         self.assertTrue(ctx.send_called)
         self.assertEqual(
-            ctx.send_parameters, 
-            "Nome de grupo inválido. Use apenas letras, números, traços (-) e underscore (_)"
+            ctx.send_parameters,
+            "Nome de grupo inválido. Use apenas letras, números, traços (-) e underscore (_)" # noqa E501
         )
+
 
 class TestRemoveGroup(DBTestCase):
     def test_group_exists(self):
@@ -79,7 +83,7 @@ class TestRemoveGroup(DBTestCase):
 
         self.assertTrue(ctx.send_called)
         self.assertEqual(ctx.send_parameters, "Grupo foo removido")
-        self.assertEqual(PromoCode.select().count(), 0)            
+        self.assertEqual(PromoCode.select().count(), 0)
 
 
 class TestListUser(DBTestCase):
@@ -88,8 +92,8 @@ class TestListUser(DBTestCase):
         asyncio.run(list_group(ctx))
 
         self.assertTrue(ctx.send_called)
-        self.assertEqual(ctx.send_parameters, "Não há grupos de código promocional cadastrados")
-
+        self.assertEqual(ctx.send_parameters,
+                         "Não há grupos de código promocional cadastrados")
 
     def test_has_groups_in_different_guild(self):
         ctx = FakeContext()
@@ -98,7 +102,8 @@ class TestListUser(DBTestCase):
         asyncio.run(list_group(ctx))
 
         self.assertTrue(ctx.send_called)
-        self.assertEqual(ctx.send_parameters, "Não há grupos de código promocional cadastrados")
+        self.assertEqual(ctx.send_parameters,
+                         "Não há grupos de código promocional cadastrados")
 
     def test_has_results_in_same_guild(self):
         ctx = FakeContext()

@@ -6,12 +6,15 @@ chardet==3.0.4
 colorama==0.4.3
 coverage==5.1
 discord.py==1.3.4
+flake8==3.8.4
 idna==2.9
 isort==4.3.21
 lazy-object-proxy==1.4.3
 mccabe==0.6.1
 multidict==4.7.6
 peewee==3.13.3
+pycodestyle==2.6.0
+pyflakes==2.2.0
 pylint==2.5.2
 python-dotenv==0.15.0
 pytz==2020.1

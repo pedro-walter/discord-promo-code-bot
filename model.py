@@ -1,4 +1,9 @@
-from peewee import Model, IntegerField, CharField, ForeignKeyField, DateTimeField
+from peewee import (Model,
+                    IntegerField,
+                    CharField,
+                    ForeignKeyField,
+                    DateTimeField)
+
 
 class AuthorizedUser(Model):
     guild_id = IntegerField()
@@ -9,6 +14,7 @@ class AuthorizedUser(Model):
             (('guild_id', 'user_id'), True),
         )
 
+
 class PromoCodeGroup(Model):
     guild_id = IntegerField()
     name = CharField()
@@ -18,8 +24,11 @@ class PromoCodeGroup(Model):
             (('guild_id', 'name'), True),
         )
 
+
 class PromoCode(Model):
-    group = ForeignKeyField(PromoCodeGroup, backref='codes', on_delete='CASCADE')
+    group = ForeignKeyField(PromoCodeGroup,
+                            backref='codes',
+                            on_delete='CASCADE')
     code = CharField()
     sent_to_name = CharField(null=True)
     sent_to_id = IntegerField(null=True, index=True)
