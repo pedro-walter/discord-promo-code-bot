@@ -57,5 +57,5 @@ class TestSendLongMessageArray(unittest.TestCase):
             chunk_size=19,
             split_character='-'
         ))
-        mock.assert_any_await("aaaaaaaaaaaaaaaaa\nPage 1/2")
-        mock.assert_any_await("bbbbbbbbbbbbbbbbb\nPage 2/2")
+        mock.assert_any_await("aaaaaaaaaaaaaaaaa\n\nPage 1/2")
+        mock.assert_any_await("bbbbbbbbbbbbbbbbb\n\nPage 2/2")

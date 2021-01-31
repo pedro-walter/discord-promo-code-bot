@@ -220,7 +220,7 @@ async def list_code(ctx, group_name):
             output += " enviado para o usuário {0} em {1}".format(
                 code.sent_to_name, sent_at.astimezone(LOCAL_TIMEZONE).strftime(DATETIME_FORMAT)
             )
-    await send_long_message_array(ctx.author.send, output, split_character='|')
+    await send_long_message_array(ctx.author.send, output)
 
 @bot.command()
 @commands.check(is_authorized_or_owner)

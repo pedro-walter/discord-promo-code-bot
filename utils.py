@@ -29,9 +29,9 @@ async def send_long_message_array(send_function, message, split_character="\n", 
             raise Exception("Message can't have pieces bigger than chunk_size")
         if (len(piece) + len(current_chunk)) > chunk_size:
             chunks.append(current_chunk)
-            current_chunk = piece
+            current_chunk = piece + "\n"
         else:
-            current_chunk += piece
+            current_chunk += piece + "\n"
 
     if len(current_chunk) > 0:
         chunks.append(current_chunk)
