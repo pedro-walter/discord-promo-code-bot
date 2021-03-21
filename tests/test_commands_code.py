@@ -15,6 +15,7 @@ from .utils import (DBTestCase,
                     FakeContext,
                     FakeGuild2,
                     FakeUser,
+                    FakeUser2,
                     returns_false,
                     returns_true)
 
@@ -301,6 +302,28 @@ class TestSendCode(DBTestCase):
         self.assertEqual(saved_promo_code.sent_to_name, user.name)
         self.assertEqual(saved_promo_code.sent_to_id, user.id)
         self.assertIsNotNone(saved_promo_code.sent_at)
+
+    def test_group_doesnt_have_codes_available(self):
+        ctx = FakeContext()
+        user = FakeUser()
+        user2 = FakeUser2()
+        group = PromoCodeGroup.create(guild_id=ctx.guild.id, name='foo')
+        PromoCode.create(group=group,
+                         code='ASDF-1234',
+                         sent_to_name=user.name,
+                         sent_to_id=user.id)
+        asyncio.run(send_code(ctx,
+                              group_name='foo',
+                              users=[user2],
+                              is_authorized_or_owner=returns_false))
+
+        self.assertTrue(ctx.author.send_called)
+        self.assertEqual(
+            ctx.send_parameters,
+            "Grupo {} não possui mais códigos disponíveis".format(
+                group.name
+            )
+        )
 
 
 class TestMyCodes(DBTestCase):

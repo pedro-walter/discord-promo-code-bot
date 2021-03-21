@@ -326,6 +326,13 @@ async def send_code(ctx,
             promo_code = PromoCode.select().where(
                 (PromoCode.group == group) & (PromoCode.sent_to_id == None) # noqa E501 pylint: disable=singleton-comparison
             ).first()
+            if promo_code is None:
+                messages_channel.append(
+                    "Grupo {} não possui mais códigos disponíveis".format(
+                        group_name
+                    )
+                )
+                break
             promo_code.sent_to_name = user.name
             promo_code.sent_to_id = user.id
             promo_code.sent_at = datetime.now(timezone.utc)
