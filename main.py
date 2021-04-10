@@ -6,6 +6,7 @@ from discord import User
 from discord.ext import commands
 from dotenv import load_dotenv
 from peewee import SqliteDatabase, IntegrityError
+import sentry_sdk
 
 from constants import MODELS, DATETIME_FORMAT, LOCAL_TIMEZONE
 from model import AuthorizedUser, PromoCodeGroup, PromoCode
@@ -18,6 +19,8 @@ from utils import (validate_group_name,
 load_dotenv()
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
+SENTRY_URL = os.getenv('SENTRY_URL')
+SENTRY_ENVIRONMENT = os.getenv('SENTRY_ENVIRONMENT', 'unknown')
 
 bot = commands.Bot(command_prefix='$')
 
@@ -26,10 +29,25 @@ db = SqliteDatabase('database.sqlite', pragmas={'foreign_keys': 1})
 db.bind(MODELS)
 db.create_tables(MODELS)
 
+sentry_sdk.init(SENTRY_URL,
+                traces_sample_rate=1.0,
+                environment=SENTRY_ENVIRONMENT)
+
 
 @bot.event
 async def on_ready():
     logging.info('Logged on as %s!', bot.user)
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    sentry_sdk.add_breadcrumb(
+        category='discord.command_name',
+        message='Error on command %s' % ctx.command.qualified_name,
+        level='info'
+    )
+    sentry_sdk.capture_exception(error)
+    await ctx.send(str(error))
 
 
 async def is_authorized_or_owner(ctx, is_owner=bot.is_owner):
